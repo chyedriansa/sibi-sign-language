@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SIBI Sign Language Detection</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #ddd;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 1200px;
+    }
+
+    .main-content {
+      display: flex;
+      gap: 20px;
+      width: 100%;
+      justify-content: center;
+      align-items: stretch; /* memastikan tinggi sama */
+    }
+
+    .video-section,
+    .predictions-section {
+      flex: 1;
+      max-width: 640px;
+      min-width: 320px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .video-container {
+      position: relative;
+      width: 100%;
+      flex-grow: 1;
+      background-color: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    #video-feed {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .detection-info {
+      background-color: #fff;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .detection-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 4rem;
+      font-weight: bold;
+      height: 100px;
+      margin-bottom: 15px;
+      color: #333;
+      text-align: center;
+      background-color: #f9f9f9;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+    }
+
+    .detection-confidence {
+      text-align: center;
+      font-size: 1.1rem;
+      color: #666;
+      margin-bottom: 10px;
+    }
+
+    .status {
+      text-align: center;
+      font-size: 1rem;
+      color: #999;
+    }
+
+    .predicted-words {
+      background-color: #fff;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      margin-top: 20px;
+    }
+
+    .predicted-words h3 {
+      margin: 0 0 15px 0;
+      color: #333;
+      text-align: center;
+      font-size: 1.3rem;
+      border-bottom: 2px solid #4caf50;
+      padding-bottom: 10px;
+    }
+
+    .words-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 15px;
+      background-color: #f9f9f9;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+      min-height: 200px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .word-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 15px;
+      background-color: #fff;
+      border-radius: 6px;
+      border: 1px solid #e0e0e0;
+      font-size: 1rem;
+      transition: all 0.2s ease;
+    }
+
+    .word-item:hover {
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      transform: translateY(-1px);
+    }
+
+    .word-text {
+      font-weight: 600;
+      color: #333;
+      text-transform: capitalize;
+      font-size: 1.1rem;
+    }
+
+    .word-probability {
+      color: #666;
+      font-size: 0.9rem;
+      background-color: #f0f0f0;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-weight: 500;
+    }
+
+    .no-predictions {
+      text-align: center;
+      color: #999;
+      font-style: italic;
+      padding: 20px;
+    }
+
+    .probability-bar {
+      width: 80px;
+      height: 6px;
+      background-color: #e0e0e0;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-left: 10px;
+    }
+
+    .probability-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4caf50, #81c784);
+      transition: width 0.3s ease;
+    }
+
+    .waiting {
+      color: #f57c00;
+    }
+
+    .detected {
+      color: #4caf50;
+    }
+
+    .instructions {
+      margin-top: 30px;
+      text-align: center;
+      color: #666;
+      padding: 15px;
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      width: 100%;
+      max-width: 800px;
+    }
+
+    @media (max-width: 768px) {
+      .main-content {
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      .video-section,
+      .predictions-section {
+        max-width: 100%;
+      }
+
+      .words-list {
+        max-height: 250px;
+      }
+
+      .detection-label {
+        font-size: 3rem;
+        height: 80px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 10px;
+      }
+
+      .detection-label {
+        font-size: 2.5rem;
+        height: 70px;
+      }
+
+      .word-item {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+      }
+
+      .word-text {
+        font-size: 1rem;
+      }
+
+      .probability-bar {
+        width: 60px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1><i>Indonesian Sign Language Detection </i></h1>
+
+    <div class="main-content">
+      <!-- Video Section -->
+      <div class="video-section">
+        <div class="video-container">
+          <img id="video-feed" src="" alt="Video feed" />
+        </div>
+      </div>
+
+      <!-- Right Section: Detection Info + Predictions -->
+      <div class="predictions-section">
+        <div class="detection-info">
+          <div class="detection-label" id="letter-display">-</div>
+          <div class="detection-confidence" id="confidence-display">Confidence: 0%</div>
+          <div class="status waiting" id="status-display">Waiting for hand detection...</div>
+        </div>
+
+        <div class="predicted-words">
+          <h3>🔮 Predicted Words</h3>
+          <div class="words-list" id="predicted-words-display">
+            <div class="no-predictions">No predictions available</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="instructions">
+      <p><strong>📷 Instructions:</strong> Position your hand in front of the camera to detect SIBI sign language letters (A-Z).</p>
+      <p>Make sure your hand is clearly visible and well-lit for better detection accuracy.</p>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const videoFeed = document.getElementById('video-feed');
+      const letterDisplay = document.getElementById('letter-display');
+      const confidenceDisplay = document.getElementById('confidence-display');
+      const statusDisplay = document.getElementById('status-display');
+      const predictedWordsDisplay = document.getElementById('predicted-words-display');
+
+      function displayPredictedWords(predictedWords) {
+        predictedWordsDisplay.innerHTML = '';
+
+        if (!predictedWords || predictedWords.length === 0) {
+          predictedWordsDisplay.innerHTML = '<div class="no-predictions">No predictions available</div>';
+          return;
+        }
+
+        predictedWords.forEach((wordData, index) => {
+          const [word, probability] = wordData;
+          const probabilityPercent = (probability * 100).toFixed(1);
+
+          const wordItem = document.createElement('div');
+          wordItem.className = 'word-item';
+
+          const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '📝';
+
+          wordItem.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 1.2rem;">${rankEmoji}</span>
+              <span class="word-text">${word}</span>
+            </div>
+            <div style="display: flex; align-items: center;">
+              <span class="word-probability">${probabilityPercent}%</span>
+              <div class="probability-bar">
+                <div class="probability-fill" style="width: ${probabilityPercent}%"></div>
+              </div>
+            </div>
+          `;
+
+          predictedWordsDisplay.appendChild(wordItem);
+        });
+      }
+
+      const eventSource = new EventSource('/video_feed');
+
+      eventSource.onmessage = function (event) {
+        const data = JSON.parse(event.data);
+        videoFeed.src = 'data:image/jpeg;base64,' + data.image;
+
+        if (data.prediction.detected) {
+          letterDisplay.textContent = data.prediction.label;
+          confidenceDisplay.textContent = `Confidence: ${(data.prediction.confidence * 100).toFixed(1)}%`;
+          displayPredictedWords(data.prediction.predicted_words);
+
+          statusDisplay.textContent = 'Hand detected';
+          statusDisplay.classList.remove('waiting');
+          statusDisplay.classList.add('detected');
+        } else {
+          letterDisplay.textContent = '-';
+          confidenceDisplay.textContent = 'Confidence: 0%';
+          displayPredictedWords([]);
+
+          statusDisplay.textContent = 'Waiting for hand detection...';
+          statusDisplay.classList.add('waiting');
+          statusDisplay.classList.remove('detected');
+        }
+      };
+
+      eventSource.onerror = function () {
+        console.error('EventSource failed');
+        statusDisplay.textContent = 'Connection error. Please refresh the page.';
+        statusDisplay.classList.add('waiting');
+      };
+
+      window.addEventListener('beforeunload', function () {
+        eventSource.close();
+        fetch('/shutdown', { method: 'POST' }).catch(error => console.error('Error shutting down video feed:', error));
+      });
+    });
+  </script>
+</body>
+</html>
