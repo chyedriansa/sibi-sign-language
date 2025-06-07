@@ -47,4 +47,4 @@ python -m flask run
 Now you can detection the Indonesian Sign Language with the device cameras. Please use the clearly background to increase your presentage and accuracy detection.
 
 
-## License by Cahaya Edriansa
+## License by &copy Cahaya Edriansa
