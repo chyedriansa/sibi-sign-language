@@ -31,6 +31,12 @@ hands = mp_hands.Hands(static_image_mode=False,
                        max_num_hands=1,
                        min_detection_confidence=0.7)
 
+#MediaPipe Setup (using Greenscreen)
+mp_selfie = mp.solutions.selfie_segmentation
+segment = mp_selfie.SelfieSegmentation(model_selection=1)
+
+
+
 # Word prediction function
 def predict_words(prefix, k=3):
     prefix = (list(prefix.lower()) + [PAD_TOKEN] * MAX_SEQ_LEN)[:MAX_SEQ_LEN]
@@ -40,7 +46,7 @@ def predict_words(prefix, k=3):
     top_k = probs.argsort()[-k:][::-1]
     return [(idx_to_word[i], float(probs[i])) for i in top_k]
 
-# Frame processing
+# Frame processing (No Greenscreen)
 def process_frame(frame):
     h, w = frame.shape[:2]
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -80,6 +86,62 @@ def process_frame(frame):
                     "y_max": ymax_p
                 }
     return frame, {"detected": False}
+
+# Frame Proccessing (Using GreenScreen)
+# def process_frame(frame):
+#     h, w = frame.shape[:2]
+#     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+#     # Segmentation mask
+#     seg_result = segment.process(rgb)
+#     mask = seg_result.segmentation_mask
+#     condition = mask > 0.5  # Threshold, bisa disesuaikan
+
+#     # Background green (pure green)
+#     green_background = np.zeros(frame.shape, dtype=np.uint8)
+#     green_background[:] = (0, 255, 0)  # BGR
+
+#     # Combine human and green background
+#     frame = np.where(condition[:, :, np.newaxis], frame, green_background)
+
+#     # Lanjut ke hand detection seperti sebelumnya
+#     results = hands.process(rgb)
+#     if results.multi_hand_landmarks:
+#         for landmarks in results.multi_hand_landmarks:
+#             x = [lm.x * w for lm in landmarks.landmark]
+#             y = [lm.y * h for lm in landmarks.landmark]
+#             xmin, xmax = int(min(x)), int(max(x))
+#             ymin, ymax = int(min(y)), int(max(y))
+#             xmin_p, ymin_p = max(xmin - PADDING, 0), max(ymin - PADDING, 0)
+#             xmax_p, ymax_p = min(xmax + PADDING, w), min(ymax + PADDING, h)
+
+#             cropped = frame[ymin_p:ymax_p, xmin_p:xmax_p]
+#             resized = cv2.resize(cropped, (224, 224)).astype('float32') / 255.0
+#             input_img = np.expand_dims(resized, axis=0)
+
+#             preds = hand_model.predict(input_img)
+#             class_id = np.argmax(preds)
+#             label = LABELS[class_id]
+#             conf = float(preds[0][class_id])
+
+#             if conf > 0.1:
+#                 predicted = predict_words(label)
+#                 cv2.rectangle(frame, (xmin_p, ymin_p), (xmax_p, ymax_p), (0, 255, 0), 2)
+#                 cv2.putText(frame, f'{label} ({conf*100:.1f}%)', (xmin_p, ymin_p - 10),
+#                             cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+#                 return frame, {
+#                     "detected": True,
+#                     "label": label,
+#                     "predicted_words": predicted,
+#                     "confidence": conf,
+#                     "x_min": xmin_p,
+#                     "y_min": ymin_p,
+#                     "x_max": xmax_p,
+#                     "y_max": ymax_p
+#                 }
+
+#     return frame, {"detected": False}
+
 
 # Stream video frames
 def get_frame():
